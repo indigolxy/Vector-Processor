@@ -1,19 +1,28 @@
+`include "./src/ifetch.v"
+
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
 
-module cpu(
-  input  wire                 clk_in,			// system clock signal
-  input  wire                 rst_in,			// reset signal
-	input  wire					        rdy_in,			// ready signal, pause cpu when low
+module cpu
+#(
+  parameter MEM_ADDR_WIDTH = 32, 
+  parameter MEM_DATA_WIDTH = 32, 
+  parameter INST_WIDTH = 32
+)
+(
+  input wire clk_in,
+  input wire rst_in,
+	// input  wire					    rdy_in,			// ready signal, pause cpu when low
 
-  input  wire [ 7:0]          mem_din,		// data input bus
-  output wire [ 7:0]          mem_dout,		// data output bus
-  output wire [31:0]          mem_a,			// address bus (only 17:0 is used)
-  output wire                 mem_wr,			// write/read signal (1 for write)
+  output  wire [MEM_ADDR_WIDTH-1:0] mem_addr_a, // only 16 bits used
+  input wire [MEM_DATA_WIDTH-1:0] mem_data_a,
+
+  output  wire                  mem_wr_b,
+  output  wire [MEM_DATA_WIDTH-1:0] mem_src_b,
+  output  wire [MEM_ADDR_WIDTH-1:0] mem_addr_b,
+  input wire [MEM_DATA_WIDTH-1:0] mem_data_b
 	
-	input  wire                 io_buffer_full, // 1 if uart buffer is full
-	
-	output wire [31:0]			dbgreg_dout		// cpu register output (debugging demo)
+	// output wire [31:0]			dbgreg_dout		// cpu register output (debugging demo)
 );
 
 // implementation goes here
@@ -28,13 +37,36 @@ module cpu(
 // - 0x30004 read: read clocks passed since cpu starts (in dword, 4 bytes)
 // - 0x30004 write: indicates program stop (will output '\0' through uart tx)
 
+wire [MEM_ADDR_WIDTH-1:0] if_to_ram_addr;
+wire                      if_to_ram_valid;
+wire [MEM_DATA_WIDTH-1:0] ram_to_if_data;
+wire                      ram_to_if_done;
+
+wire                      id_to_if_vacant;
+wire                      if_to_id_valid;
+wire [INST_WIDTH-1:0]     if_to_id_inst;
+
+wire                      wb_to_if_valid;
+wire [MEM_ADDR_WIDTH-1:0] wb_to_if_offset;
+
+i_fetch #(.ADDR_WIDTH(32),
+         .INST_WIDTH(32)) u_IFetch(
+  .clk          	(clk_in),
+  .offset_valid 	(wb_to_if_valid),
+  .offset       	(wb_to_if_offset),
+  .inst_vacant  	(id_to_if_vacant),
+  .inst_valid   	(if_to_id_valid),
+  .inst         	(if_to_id_inst),
+  .mem_done     	(ram_to_if_done),
+  .mem_inst     	(ram_to_if_data),
+  .mem_valid    	(if_to_ram_valid),
+  .mem_addr     	(if_to_ram_addr)
+);
+
+
 always @(posedge clk_in)
   begin
     if (rst_in)
-      begin
-      
-      end
-    else if (!rdy_in)
       begin
       
       end
