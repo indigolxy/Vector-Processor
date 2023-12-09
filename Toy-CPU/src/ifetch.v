@@ -5,7 +5,7 @@ module i_fetch
 )
 (
     input wire clk,
-    // input wire rst,
+    input wire rst,
 
     input wire offset_valid,
     input wire [ADDR_WIDTH-1:0] offset,
@@ -28,7 +28,13 @@ assign inst = instruction;
 assign mem_addr = pc;
 
 always @(posedge clk) begin
-  case (status)
+  if (rst) begin
+      pc    <= 32'h0;
+      mem_valid <= 0;
+      inst_valid <= 0;
+      status   <= IDLE;
+  end else begin
+    case (status)
     IDLE: begin
       mem_valid  <= 1;
       inst_valid <= 0;
@@ -60,6 +66,7 @@ always @(posedge clk) begin
       end
     end
   endcase
+  end
 end
 
 endmodule

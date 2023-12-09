@@ -14,7 +14,7 @@ module mem_ctrl
   output reg if_done,
   output wire [DATA_WIDTH-1:0] if_data,
   
-  // ? with ???
+  // with ls
   input wire ls_we,
   input wire [DATA_WIDTH-1:0] ls_src,
   input wire [ADDR_WIDTH-1:0] ls_addr,
@@ -25,7 +25,7 @@ module mem_ctrl
   output reg [ADDR_WIDTH-1:0] addr_a, // address bus (only 17:0 is used)
   input wire [DATA_WIDTH-1:0] data_a,
   output reg [ADDR_WIDTH-1:0] addr_b, // address bus (only 17:0 is used)
-  output reg we_b,
+  output reg wr_b,
   output wire [DATA_WIDTH-1:0] src_b,
   input wire [DATA_WIDTH-1:0] data_b
 );
@@ -36,12 +36,12 @@ module mem_ctrl
     if (rst) begin
       if_done  <= 0;
       ls_done <= 0;
-      we_b   <= 0;
+      wr_b   <= 0;
       addr_a    <= 0;
       addr_b    <= 0;
     end else if (if_valid) begin
       addr_a <= if_addr;
-      if_done <= 1'b0;
+      if_done <= 1'b1;
     end
     // if (write_en_b) begin
     //   mem[addr_b] <= data_b;

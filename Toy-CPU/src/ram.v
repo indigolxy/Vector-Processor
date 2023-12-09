@@ -16,7 +16,9 @@ module ram
   output wire [DATA_WIDTH-1:0] dout_b
 );
 
-reg [DATA_WIDTH-1:0] ram [2**ADDR_WIDTH-1:0];
+localparam RAM_SIZE = 2**ADDR_WIDTH;
+
+reg [8-1:0] ram [RAM_SIZE-1:0];
 reg [ADDR_WIDTH-1:0] q_addr_a;
 reg [ADDR_WIDTH-1:0] q_addr_b;
 
@@ -30,13 +32,13 @@ always @(posedge clk)
 
 integer i;
 initial begin
-  for (i=0;i<2**ADDR_WIDTH;i=i+1) begin
+  for (i=0;i<RAM_SIZE;i=i+1) begin
     ram[i] = 0;
   end
   $readmemh("test.data", ram); // add test.data to vivado project or specify a valid file path
 end
 
-assign dout_a = ram[q_addr_a];
-assign dout_b = ram[q_addr_b];
+assign dout_a = {ram[q_addr_a], ram[q_addr_a + 1], ram[q_addr_a + 2], ram[q_addr_a + 3]};
+assign dout_b = {ram[q_addr_b], ram[q_addr_b + 1], ram[q_addr_b + 2], ram[q_addr_b + 3]};
 
 endmodule

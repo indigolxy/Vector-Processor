@@ -1,7 +1,7 @@
 // riscv top module file
 // modification allowed for debugging purposes
-`include "./src/cpu.v"
-`include "./src/ram.v"
+// `include "./src/cpu.v"
+// `include "./src/ram.v"
 
 module riscv_top
 // #(
@@ -38,8 +38,8 @@ wire [ADDR_WIDTH-1:0] addr_a;
 wire [DATA_WIDTH-1:0] data_a;
 wire we_b;
 wire [DATA_WIDTH-1:0] src_b;
-output wire [ADDR_WIDTH-1:0] addr_b;
-input wire [DATA_WIDTH-1:0] data_b;
+wire [ADDR_WIDTH-1:0] addr_b;
+wire [DATA_WIDTH-1:0] data_b;
 
 cpu #(
 	.MEM_ADDR_WIDTH(ADDR_WIDTH),

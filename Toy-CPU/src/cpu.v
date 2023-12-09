@@ -1,4 +1,5 @@
-`include "./src/ifetch.v"
+// `include "./src/ifetch.v"
+// `include "./src/mem_ctrl.v"
 
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
@@ -37,43 +38,60 @@ module cpu
 // - 0x30004 read: read clocks passed since cpu starts (in dword, 4 bytes)
 // - 0x30004 write: indicates program stop (will output '\0' through uart tx)
 
-wire [MEM_ADDR_WIDTH-1:0] if_to_ram_addr;
-wire                      if_to_ram_valid;
-wire [MEM_DATA_WIDTH-1:0] ram_to_if_data;
-wire                      ram_to_if_done;
+wire [MEM_ADDR_WIDTH-1:0] if_to_mc_addr;
+wire                      if_to_mc_valid;
+wire [MEM_DATA_WIDTH-1:0] mc_to_if_data;
+wire                      mc_to_if_done;
 
 wire                      id_to_if_vacant;
 wire                      if_to_id_valid;
 wire [INST_WIDTH-1:0]     if_to_id_inst;
 
+assign id_to_if_vacant = 1'b1; // TODO
+
 wire                      wb_to_if_valid;
 wire [MEM_ADDR_WIDTH-1:0] wb_to_if_offset;
+
+wire                      ls_to_mc_we;
+wire [MEM_DATA_WIDTH-1:0] ls_to_mc_src;
+wire [MEM_ADDR_WIDTH-1:0] ls_to_mc_addr;
+wire                      mc_to_ls_done;
+wire [MEM_DATA_WIDTH-1:0] mc_to_ls_data;
 
 i_fetch #(.ADDR_WIDTH(32),
          .INST_WIDTH(32)) u_IFetch(
   .clk          	(clk_in),
+  .rst          	(rst_in),
   .offset_valid 	(wb_to_if_valid),
   .offset       	(wb_to_if_offset),
   .inst_vacant  	(id_to_if_vacant),
   .inst_valid   	(if_to_id_valid),
   .inst         	(if_to_id_inst),
-  .mem_done     	(ram_to_if_done),
-  .mem_inst     	(ram_to_if_data),
-  .mem_valid    	(if_to_ram_valid),
-  .mem_addr     	(if_to_ram_addr)
+  .mem_done     	(mc_to_if_done),
+  .mem_inst     	(mc_to_if_data),
+  .mem_valid    	(if_to_mc_valid),
+  .mem_addr     	(if_to_mc_addr)
 );
 
+mem_ctrl u_mem_ctrl(
+  .clk      	(clk_in),
+  .rst      	(rst_in),
+  .if_valid 	(if_to_mc_valid),
+  .if_addr  	(if_to_mc_addr),
+  .if_done  	(mc_to_if_done),
+  .if_data  	(mc_to_if_data),
+  .ls_we    	(ls_to_mc_we),
+  .ls_src   	(ls_to_mc_src),
+  .ls_addr  	(ls_to_mc_addr),
+  .ls_done  	(mc_to_ls_done),
+  .ls_data  	(mc_to_ls_data),
+  .addr_a   	(mem_addr_a),
+  .data_a   	(mem_data_a),
+  .addr_b   	(mem_addr_b),
+  .wr_b     	(mem_wr_b),
+  .src_b    	(mem_src_b),
+  .data_b   	(mem_data_b)
+);
 
-always @(posedge clk_in)
-  begin
-    if (rst_in)
-      begin
-      
-      end
-    else
-      begin
-      
-      end
-  end
 
 endmodule

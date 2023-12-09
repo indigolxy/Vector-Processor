@@ -7,18 +7,15 @@ module testbench;
 reg clk;
 reg rst;
 
-riscv_top #(.SIM(1)) top(
+riscv_top top(
     .EXCLK(clk),
-    .btnC(rst),
-    .Tx(),
-    .Rx(),
-    .led()
+    .btnC(rst)
 );
 
 initial begin
   clk=0;
   rst=1;
-  repeat(50) #1 clk=!clk;
+  repeat(25) #1 clk=!clk;
   rst=0; 
   forever #1 clk=!clk;
 
