@@ -23,7 +23,7 @@ module i_fetch
 reg [ADDR_WIDTH-1:0] pc; // ! initial value = 0?
 reg [2:1] status;
 reg [INST_WIDTH-1:0] instruction;
-localparam IDLE = 2'b00, WAIT_MEM = 2'b01, STALL = 2'b10, WAIT_DECODE = 2'b11;
+localparam IDLE = 2'b00, WAIT_MEM = 2'b01, WAIT_DECODE = 2'b10, STALL = 2'b11;
 assign inst = instruction;
 assign mem_addr = pc;
 
@@ -44,17 +44,6 @@ always @(posedge clk) begin
       if (mem_done) begin
         mem_valid <= 0;
         pc <= pc + 4;
-        // bne
-        if (instruction[6:0] == 7'b1100011 && instruction[14:12] == 3'b001) begin
-          status <= STALL;
-        end else begin
-          status <= WAIT_DECODE;
-        end
-      end
-    end
-    STALL: begin
-      if (offset_valid) begin
-        pc <= pc + offset;
         status <= WAIT_DECODE;
       end
     end
@@ -62,6 +51,17 @@ always @(posedge clk) begin
       if (inst_vacant) begin
         inst_valid <= 1;
         instruction <= mem_inst;
+        // bne
+        if (mem_inst[6:0] == 7'b1100011 && mem_inst[14:12] == 3'b001) begin
+          status <= STALL;
+        end else begin
+          status <= IDLE;
+        end
+      end
+    end
+    STALL: begin
+      if (offset_valid) begin
+        pc <= pc + offset;
         status <= IDLE;
       end
     end

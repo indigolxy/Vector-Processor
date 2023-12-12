@@ -1,3 +1,4 @@
+// `include "./idecode.v"
 // `include "./src/ifetch.v"
 // `include "./src/mem_ctrl.v"
 
@@ -26,7 +27,9 @@ module cpu
 	// output wire [31:0]			dbgreg_dout		// cpu register output (debugging demo)
 );
 
-// implementation goes here
+localparam OPT_SIZE = 7;
+localparam FUNCT_SIZE = 3;
+localparam REG_SIZE = 5;
 
 // Specifications:
 // - Pause cpu(freeze pc, registers, etc.) when rdy_in is low
@@ -38,20 +41,32 @@ module cpu
 // - 0x30004 read: read clocks passed since cpu starts (in dword, 4 bytes)
 // - 0x30004 write: indicates program stop (will output '\0' through uart tx)
 
+// if and mc
 wire [MEM_ADDR_WIDTH-1:0] if_to_mc_addr;
 wire                      if_to_mc_valid;
 wire [MEM_DATA_WIDTH-1:0] mc_to_if_data;
 wire                      mc_to_if_done;
 
+// if and id
 wire                      id_to_if_vacant;
 wire                      if_to_id_valid;
 wire [INST_WIDTH-1:0]     if_to_id_inst;
 
-assign id_to_if_vacant = 1'b1; // TODO
+// id and ib
+wire                      ib_to_id_vacant;
+wire                      id_to_ib_valid;
+wire [OPT_SIZE-1:0]       id_to_ib_opt;
+wire [FUNCT_SIZE-1:0]     id_to_ib_funct;
+wire [REG_SIZE-1:0]       id_to_ib_rs1;
+wire [REG_SIZE-1:0]       id_to_ib_rs2;
+wire [REG_SIZE-1:0]       id_to_ib_rd;
+wire [MEM_DATA_WIDTH-1:0] id_to_ib_imm;
 
+// if and wb
 wire                      wb_to_if_valid;
 wire [MEM_ADDR_WIDTH-1:0] wb_to_if_offset;
 
+// mc and ls
 wire                      ls_to_mc_we;
 wire [MEM_DATA_WIDTH-1:0] ls_to_mc_src;
 wire [MEM_ADDR_WIDTH-1:0] ls_to_mc_addr;
@@ -59,7 +74,7 @@ wire                      mc_to_ls_done;
 wire [MEM_DATA_WIDTH-1:0] mc_to_ls_data;
 
 i_fetch #(.ADDR_WIDTH(32),
-         .INST_WIDTH(32)) u_IFetch(
+         .INST_WIDTH(32)) u_i_fetch(
   .clk          	(clk_in),
   .rst          	(rst_in),
   .offset_valid 	(wb_to_if_valid),
@@ -71,6 +86,23 @@ i_fetch #(.ADDR_WIDTH(32),
   .mem_inst     	(mc_to_if_data),
   .mem_valid    	(if_to_mc_valid),
   .mem_addr     	(if_to_mc_addr)
+);
+
+i_decode u_i_decode(
+  .clk          	(clk_in),
+  .rst          	(rst_in),
+  .inst_valid   	(if_to_id_valid),
+  .inst         	(if_to_id_inst),
+  .if_vacant    	(id_to_if_vacant),
+
+  .ib_vacant    	(ib_to_id_vacant),
+  .ib_valid     	(id_to_ib_valid),
+  .ib_opt       	(id_to_ib_opt),
+  .ib_funct     	(id_to_ib_funct),
+  .ib_rs1       	(id_to_ib_rs1),
+  .ib_rs2       	(id_to_ib_rs2),
+  .ib_rd        	(id_to_ib_rd),
+  .ib_imm       	(id_to_ib_imm)
 );
 
 mem_ctrl u_mem_ctrl(
