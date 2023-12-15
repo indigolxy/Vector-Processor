@@ -9,7 +9,7 @@ module i_decode
   input wire rst,
 
   // with i_fetch
-  input wire inst_valid,
+  input wire if_valid,
   input wire [INST_WIDTH-1:0] inst,
   output wire if_vacant,
 
@@ -25,7 +25,7 @@ module i_decode
 );
 
 assign if_vacant = ib_vacant;
-assign ib_valid = inst_valid;
+assign ib_valid = if_valid;
 
 localparam OPT_SIZE = 7;
 localparam FUNCT_SIZE = 3;
@@ -39,11 +39,12 @@ localparam OPCODE_R = 7'b0110011;
 
 always @(*) begin
   if (rst) begin
-    ib_opt <= 7'b0;
-    ib_rs1 <= 5'b0;
-    ib_rs2 <= 5'b0;
-    ib_rd  <= 5'b0;
-    ib_imm <= 32'h0;
+    ib_opt <= 0;
+    ib_funct <= 0;
+    ib_rs1 <= 0;
+    ib_rs2 <= 0;
+    ib_rd  <= 0;
+    ib_imm <= 0;
   end else begin
     ib_opt <= inst[6:0];
     ib_rs1 <= inst[19:15];

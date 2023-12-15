@@ -19,20 +19,27 @@ module i_buffer
   input wire [DATA_WIDTH-1:0] id_imm,
 
   // with scoreboard
-  // output wire ie_vacant,
-  // output wire ie_valid,
-  // output reg [OPT_SIZE-1:0] ie_opt,
-  // output reg [FUNCT_SIZE-1:0] ie_funct,
-  // output reg [REG_SIZE-1:0] ie_rs1,
-  // output reg [REG_SIZE-1:0] ie_rs2,
-  // output reg [REG_SIZE-1:0] ie_rd,
-  // output reg [DATA_WIDTH-1:0] ie_imm
+  input wire sb_vacant_ALU,
+  input wire sb_vacant_LS,
+  output reg sb_valid,
+  output wire [OPT_SIZE-1:0] sb_opt,
+  output wire [FUNCT_SIZE-1:0] sb_funct,
+  output wire [REG_SIZE-1:0] sb_rs1,
+  output wire [REG_SIZE-1:0] sb_rs2,
+  output wire [REG_SIZE-1:0] sb_rd,
+  output wire [DATA_WIDTH-1:0] sb_imm
 );
 
 localparam IB_SIZE = 2**IB_SIZE_WIDTH;
 localparam OPT_SIZE = 7;
 localparam FUNCT_SIZE = 3;
 localparam REG_SIZE = 5;
+
+localparam OPCODE_B = 7'b1100011;
+localparam OPCODE_L = 7'b0000011;
+localparam OPCODE_S = 7'b0100011;
+localparam OPCODE_I = 7'b0010011;
+localparam OPCODE_R = 7'b0110011;
 
 reg [OPT_SIZE-1:0] opt [IB_SIZE-1:0];
 reg [FUNCT_SIZE-1:0] funct [IB_SIZE-1:0];
@@ -41,14 +48,30 @@ reg [REG_SIZE-1:0] rs2 [IB_SIZE-1:0];
 reg [REG_SIZE-1:0] rd [IB_SIZE-1:0];
 reg [DATA_WIDTH-1:0] imm [IB_SIZE-1:0];
 
-reg [IB_SIZE_WIDTH-1:0] head, tail;
+reg [IB_SIZE_WIDTH-1:0] front, rear;
 
+assign sb_opt = opt[front];
+assign sb_funct = funct[front];
+assign sb_rs1 = rs1[front];
+assign sb_rs2 = rs2[front];
+assign sb_rd = rd[front];
+assign sb_imm = imm[front];
+
+reg [1:0] send_status, receive_status;
+
+localparam WAIT_RECEIVE = 2'b00, RECEIVED = 2'b01, FULL = 2'b10;
+localparam WAIT_SEND = 2'b00, SENT = 2'b01, POP = 2'b10, EMPTY = 2'b11;
+
+integer i;
 always @(posedge clk) begin
   if (rst) begin
-    head <= 0;
-    tail <= 0;
+    front <= 0;
+    rear <= 0;
+    receive_status <= WAIT_RECEIVE;
     id_vacant <= 1;
-    for (integer i = 0; i < IB_SIZE; i = i + 1) begin
+    send_status <= EMPTY;
+    sb_valid <= 0;
+    for (i = 0; i < IB_SIZE; i = i + 1) begin
         opt[i] <= 0;
         funct[i] <= 0;
         rs1[i] <= 0;
@@ -57,26 +80,80 @@ always @(posedge clk) begin
         imm[i] <= 0;
     end
   end else begin
-    // if (id_valid && id_vacant) begin
-    //   opt[tail] <= id_opt;
-    //   funct[tail] <= id_funct;
-    //   rs1[tail] <= id_rs1;
-    //   rs2[tail] <= id_rs2;
-    //   rd[tail] <= id_rd;
-    //   imm[tail] <= id_imm;
-    //   tail <= tail + 1;
-    //   id_vacant <= 0;
-    // end
-    // if (ie_valid && ie_vacant) begin
-    //   ie_opt <= opt[head];
-    //   ie_funct <= funct[head];
-    //   ie_rs1 <= rs1[head];
-    //   ie_rs2 <= rs2[head];
-    //   ie_rd <= rd[head];
-    //   ie_imm <= imm[head];
-    //   head <= head + 1;
-    //   ie_vacant <= 0;
-    // end
+    // for receive: 
+    // might modify: id_vacant, receive_status, rear, the regs
+    case (receive_status)
+    WAIT_RECEIVE: begin
+      if (id_valid) begin
+        // receive the inst from id
+        opt[rear] <= id_opt;
+        funct[rear] <= id_funct;
+        rs1[rear] <= id_rs1;
+        rs2[rear] <= id_rs2;
+        rd[rear] <= id_rd;
+        imm[rear] <= id_imm;
+        // push
+        if (rear == IB_SIZE - 1) begin
+          rear <= 0;
+        end else begin
+          rear <= rear + 1;
+        end
+        // set status
+        id_vacant <= 0;
+        receive_status <= RECEIVED;
+      end
+    end
+    RECEIVED: begin
+      if ((rear == IB_SIZE - 1 && front == 0) || (rear == front - 1)) begin
+        receive_status <= FULL;
+      end else begin
+        id_vacant <= 1;
+        receive_status <= WAIT_RECEIVE;
+      end
+    end
+    FULL: begin
+      if ((rear == IB_SIZE - 1 && front == 0) || (rear == front - 1)) begin
+      end else begin
+        id_vacant <= 1;
+        receive_status <= WAIT_RECEIVE;
+      end
+    end
+    endcase
+
+    // for send:
+    // might modify: sb_valid, send_status, front
+    case (send_status)
+    EMPTY : begin
+      if (front != rear) begin
+        send_status <= WAIT_SEND;
+      end
+    end
+    WAIT_SEND: begin
+      if (sb_vacant_ALU && (opt[front] == OPCODE_B || opt[front] == OPCODE_I || opt[front] == OPCODE_R)) begin
+        sb_valid <= 1;
+        send_status <= SENT;
+      end else if (sb_vacant_LS && (opt[front] == OPCODE_L || opt[front] == OPCODE_S)) begin
+        sb_valid <= 1;
+        send_status <= SENT;
+      end
+    end
+    SENT: begin
+      sb_valid <= 0;
+      if (front == IB_SIZE - 1) begin
+        front <= 0;
+      end else begin
+        front <= front + 1;
+      end
+      send_status <= POP;
+    end
+    POP: begin
+      if (front == rear) begin
+        send_status <= EMPTY;
+      end else begin
+        send_status <= WAIT_SEND;
+      end
+    end
+    endcase
   end
 end
 

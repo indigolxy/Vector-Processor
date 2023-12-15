@@ -6,7 +6,7 @@
 addr_a,dout_a
 addr_b,din_b,dout_b
 #### memctrl:in CPU
-for now: one cycle per instruction, no need to count
+for now: one cycle per instruction, state machine(2state)
 
 handle with if:
 1. valid: 
@@ -27,6 +27,20 @@ vacant 连 vacant
 sign-extend imm to 32-bit
 
 #### i_buffer
+循环队列: 
+1. 入队：rear++
+2. 出队：front++
+3. empty: rear=front; 
+4. full: rear+1=front
+send state: WaitSend->Sent->Pop->(Empty->)WaitSend
+receive state: WaitReceive->Received->(Full->)WaitReceive
+
+1. sb_valid == 1: this cycle an instruction is being sent to scoreboard
+2. id_valid == 1: this cycle an instruction is being received
+3. id_vacant == 1: some time later an instruction will come
+
+#### scoreboard
+ALU entry and LS entry
 
 # TODO MARK BUG
 ## 2023.11.29
@@ -67,5 +81,13 @@ target: 波形图看起来正常，能一直读到指令（idecode相关wire先�
 ## 2023.12.13
 1. ib 实现循环队列
 2. 设计并实现 ib_sb 接口和内部
+
+## 2023.12.14
+1. DEBUG id,ib，期待行为：
+   sb_vacant = 0，IB_SIZE=8: 一直读指令，往ib里放指令(正确decode，正确顺序)，直到放满 7 条，然后停住，不读指令。
+   sb_vacant = 1:一直读，一直往ib送，一直从ib里送出给sb。可以一直一直读到指令(正确decode，正确order)
+2. BUG: ram.v 在改变addr后一个周期才能得到正确的数据！memctrl要计数等待，不能立刻done
+
+2. mark: sb_valid 的瞬间，sb必须立刻接收，否则下一周期会变
 2. 详细梳理每种指令怎么跑，scoreboard 的逻辑
-3. mark：scoreboard 一半队列(ls)一半不用，看看遍历怎么实现
+3. Q：scoreboard 一半队列(ls)一半不用，遍历怎么实现?

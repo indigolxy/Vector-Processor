@@ -38,7 +38,7 @@ initial begin
   $readmemh("test.data", ram); // add test.data to vivado project or specify a valid file path
 end
 
-assign dout_a = {ram[q_addr_a], ram[q_addr_a + 1], ram[q_addr_a + 2], ram[q_addr_a + 3]};
-assign dout_b = {ram[q_addr_b], ram[q_addr_b + 1], ram[q_addr_b + 2], ram[q_addr_b + 3]};
+assign dout_a = {ram[q_addr_a + 3], ram[q_addr_a + 2], ram[q_addr_a + 1], ram[q_addr_a]};
+assign dout_b = {ram[q_addr_b + 3], ram[q_addr_b + 2], ram[q_addr_b + 1], ram[q_addr_b]};
 
 endmodule

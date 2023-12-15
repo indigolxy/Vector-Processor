@@ -1,6 +1,7 @@
-// `include "./idecode.v"
+// `include "./src/idecode.v"
 // `include "./src/ifetch.v"
 // `include "./src/mem_ctrl.v"
+// `include "./src/ibuffer.v"
 
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
@@ -62,6 +63,21 @@ wire [REG_SIZE-1:0]       id_to_ib_rs2;
 wire [REG_SIZE-1:0]       id_to_ib_rd;
 wire [MEM_DATA_WIDTH-1:0] id_to_ib_imm;
 
+// ib and sb
+wire                      ib_to_sb_valid;
+wire [OPT_SIZE-1:0]       ib_to_sb_opt;
+wire [FUNCT_SIZE-1:0]     ib_to_sb_funct;
+wire [REG_SIZE-1:0]       ib_to_sb_rs1;
+wire [REG_SIZE-1:0]       ib_to_sb_rs2;
+wire [REG_SIZE-1:0]       ib_to_sb_rd;
+wire [MEM_DATA_WIDTH-1:0] ib_to_sb_imm;
+wire                      sb_to_ib_vacant_ALU;
+wire                      sb_to_ib_vacant_LS;
+
+// todo
+assign sb_to_ib_vacant_ALU = 0;
+assign sb_to_ib_vacant_LS = 0;
+
 // if and wb
 wire                      wb_to_if_valid;
 wire [MEM_ADDR_WIDTH-1:0] wb_to_if_offset;
@@ -79,19 +95,20 @@ i_fetch #(.ADDR_WIDTH(32),
   .rst          	(rst_in),
   .offset_valid 	(wb_to_if_valid),
   .offset       	(wb_to_if_offset),
-  .inst_vacant  	(id_to_if_vacant),
-  .inst_valid   	(if_to_id_valid),
-  .inst         	(if_to_id_inst),
-  .mem_done     	(mc_to_if_done),
-  .mem_inst     	(mc_to_if_data),
-  .mem_valid    	(if_to_mc_valid),
-  .mem_addr     	(if_to_mc_addr)
+  .id_vacant  	(id_to_if_vacant),
+  .id_valid   	(if_to_id_valid),
+  .id_inst      (if_to_id_inst),
+  .mc_done     	(mc_to_if_done),
+  .mc_inst     	(mc_to_if_data),
+  .mc_valid    	(if_to_mc_valid),
+  .mc_addr     	(if_to_mc_addr)
 );
 
-i_decode u_i_decode(
+i_decode #(.INST_WIDTH(32),
+           .DATA_WIDTH(32)) u_i_decode(
   .clk          	(clk_in),
   .rst          	(rst_in),
-  .inst_valid   	(if_to_id_valid),
+  .if_valid   	  (if_to_id_valid),
   .inst         	(if_to_id_inst),
   .if_vacant    	(id_to_if_vacant),
 
@@ -105,7 +122,33 @@ i_decode u_i_decode(
   .ib_imm       	(id_to_ib_imm)
 );
 
-mem_ctrl u_mem_ctrl(
+i_buffer #(.IB_SIZE_WIDTH(3),
+           .DATA_WIDTH(32)) u_i_buffer(
+  .clk          	(clk_in),
+  .rst          	(rst_in),
+
+  .id_vacant   	  (ib_to_id_vacant),
+  .id_valid     	(id_to_ib_valid),
+  .id_opt       	(id_to_ib_opt),
+  .id_funct     	(id_to_ib_funct),
+  .id_rs1       	(id_to_ib_rs1),
+  .id_rs2       	(id_to_ib_rs2),
+  .id_rd        	(id_to_ib_rd),
+  .id_imm       	(id_to_ib_imm),
+
+  .sb_vacant_ALU  (sb_to_ib_vacant_ALU),
+  .sb_vacant_LS   (sb_to_ib_vacant_LS),
+  .sb_valid     	(ib_to_sb_valid),
+  .sb_opt       	(ib_to_sb_opt),
+  .sb_funct     	(ib_to_sb_funct),
+  .sb_rs1       	(ib_to_sb_rs1),
+  .sb_rs2       	(ib_to_sb_rs2),
+  .sb_rd        	(ib_to_sb_rd),
+  .sb_imm       	(ib_to_sb_imm)
+);
+
+mem_ctrl #(.ADDR_WIDTH(32),
+           .DATA_WIDTH(32)) u_mem_ctrl(
   .clk      	(clk_in),
   .rst      	(rst_in),
   .if_valid 	(if_to_mc_valid),

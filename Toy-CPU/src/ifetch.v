@@ -7,52 +7,57 @@ module i_fetch
     input wire clk,
     input wire rst,
 
+    // from bus
     input wire offset_valid,
     input wire [ADDR_WIDTH-1:0] offset,
 
-    input wire inst_vacant,
-    output reg inst_valid, 
-    output wire [INST_WIDTH-1:0] inst,
+    // with i_decode
+    input wire id_vacant,
+    output reg id_valid, 
+    output reg [INST_WIDTH-1:0] id_inst,
 
     // interaction with memory
-    input wire mem_done,
-    input wire [INST_WIDTH-1:0] mem_inst,
-    output reg mem_valid,
-    output wire [ADDR_WIDTH-1:0] mem_addr
+    input wire mc_done,
+    input wire [INST_WIDTH-1:0] mc_inst,
+    output reg mc_valid,
+    output wire [ADDR_WIDTH-1:0] mc_addr
 );
 reg [ADDR_WIDTH-1:0] pc; // ! initial value = 0?
 reg [2:1] status;
 reg [INST_WIDTH-1:0] instruction;
 localparam IDLE = 2'b00, WAIT_MEM = 2'b01, WAIT_DECODE = 2'b10, STALL = 2'b11;
-assign inst = instruction;
-assign mem_addr = pc;
+assign mc_addr = pc;
 
 always @(posedge clk) begin
   if (rst) begin
-      pc    <= 32'h0;
-      mem_valid <= 0;
-      inst_valid <= 0;
-      status   <= IDLE;
+      pc <= 0;
+      mc_valid <= 0;
+      id_valid <= 0;
+      id_inst <= 0;
+      status <= IDLE;
+      instruction <= 0;
   end else begin
     case (status)
     IDLE: begin
-      mem_valid  <= 1;
-      inst_valid <= 0;
+      mc_valid <= 1;
+      id_valid <= 0;
       status <= WAIT_MEM;
     end
     WAIT_MEM: begin
-      if (mem_done) begin
-        mem_valid <= 0;
+      mc_valid <= 0;
+      id_valid <= 0;
+      if (mc_done) begin
         pc <= pc + 4;
+        instruction <= mc_inst;
         status <= WAIT_DECODE;
       end
     end
     WAIT_DECODE: begin
-      if (inst_vacant) begin
-        inst_valid <= 1;
-        instruction <= mem_inst;
+      if (id_vacant) begin
+        id_valid <= 1;
+        id_inst <= instruction;
         // bne
-        if (mem_inst[6:0] == 7'b1100011 && mem_inst[14:12] == 3'b001) begin
+        if (instruction[6:0] == 7'b1100011 && instruction[14:12] == 3'b001) begin
           status <= STALL;
         end else begin
           status <= IDLE;
@@ -60,6 +65,7 @@ always @(posedge clk) begin
       end
     end
     STALL: begin
+      id_valid <= 0;
       if (offset_valid) begin
         pc <= pc + offset;
         status <= IDLE;

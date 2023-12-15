@@ -32,6 +32,9 @@ module mem_ctrl
 
   assign if_data = data_a;
 
+  reg status;
+  localparam IDLE = 1'b0, BUSY = 1'b1;
+
   always @(posedge clk) begin
     if (rst) begin
       if_done  <= 0;
@@ -39,9 +42,23 @@ module mem_ctrl
       wr_b   <= 0;
       addr_a    <= 0;
       addr_b    <= 0;
-    end else if (if_valid) begin
-      addr_a <= if_addr;
-      if_done <= 1'b1;
+      status <= 0;
+    end else begin
+      // todo: 多周期取数据：用state machine
+      case (status)
+      IDLE: begin
+        if_done <= 1'b0;
+        if (if_valid) begin
+          addr_a <= if_addr;
+          status <= BUSY;
+        end
+      end
+      BUSY: begin
+        if_done <= 1'b1;
+        addr_a <= 0;
+        status <= IDLE;
+      end
+      endcase
     end
     // if (write_en_b) begin
     //   mem[addr_b] <= data_b;
