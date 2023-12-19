@@ -75,8 +75,8 @@ wire                      sb_to_ib_vacant_ALU;
 wire                      sb_to_ib_vacant_LS;
 
 // todo
-assign sb_to_ib_vacant_ALU = 0;
-assign sb_to_ib_vacant_LS = 0;
+assign sb_to_ib_vacant_ALU = 1;
+assign sb_to_ib_vacant_LS = 1;
 
 // if and wb
 wire                      wb_to_if_valid;
