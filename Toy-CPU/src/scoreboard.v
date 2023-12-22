@@ -21,26 +21,33 @@ module scoreboard
   input wire [DATA_WIDTH-1:0] ib_imm,
 
   // with register
-  output reg reg_valid,
-  output reg reg_dest, // 0 for alu, 1 for ls
-  output wire [REG_WIDTH-1:0] reg_rs1,
-  output wire [REG_WIDTH-1:0] reg_rs2,
+  output reg [REG_WIDTH-1:0] reg_rs1,
+  output reg [REG_WIDTH-1:0] reg_rs2,
 
-  // with alu
-  output reg alu_valid,
-  output wire [OPT_WIDTH-1:0] alu_opt,
-  output wire [FUNCT_WIDTH-1:0] alu_funct,
-  output wire [REG_WIDTH-1:0] alu_rd,
-  output wire [DATA_WIDTH-1:0] alu_imm,
-  output wire [SB_SIZE_WIDTH-1:0] alu_pos,
+  // with alu and ls(exe)
+  output reg exe_valid,
+  output reg exe_dest, // 0 for alu, 1 for ls
+  output reg [SB_SIZE_WIDTH-1:0] exe_pos,
+  output reg [OPT_WIDTH-1:0] exe_opt,
+  output reg [FUNCT_WIDTH-1:0] exe_funct,
+  output reg [REG_WIDTH-1:0] exe_rd,
+  output reg [DATA_WIDTH-1:0] exe_imm,
 
-  // with ls
-  output reg ls_valid,
-  output wire [OPT_WIDTH-1:0] ls_opt,
-  output wire [FUNCT_WIDTH-1:0] ls_funct,
-  output wire [REG_WIDTH-1:0] ls_rd,
-  output wire [DATA_WIDTH-1:0] ls_imm,
-  output wire [SB_SIZE_WIDTH-1:0] ls_pos,
+  // // with alu
+  // output reg alu_valid,
+  // output wire [OPT_WIDTH-1:0] alu_opt,
+  // output wire [FUNCT_WIDTH-1:0] alu_funct,
+  // output wire [REG_WIDTH-1:0] alu_rd,
+  // output wire [DATA_WIDTH-1:0] alu_imm,
+  // output wire [SB_SIZE_WIDTH-1:0] alu_pos,
+
+  // // with ls
+  // output reg ls_valid,
+  // output wire [OPT_WIDTH-1:0] ls_opt,
+  // output wire [FUNCT_WIDTH-1:0] ls_funct,
+  // output wire [REG_WIDTH-1:0] ls_rd,
+  // output wire [DATA_WIDTH-1:0] ls_imm,
+  // output wire [SB_SIZE_WIDTH-1:0] ls_pos,
 
   // with wb 
   input wire wb_valid,
@@ -88,8 +95,7 @@ module scoreboard
   reg [SB_SIZE_WIDTH-1:0] ls_rear;
   reg [SB_SIZE_WIDTH-1:0] ls_front;
 
-  // ! 阻塞赋值，当个周期即时修改
-  reg [SB_SIZE_WIDTH-1:0] exe_pos;
+  // ! 阻塞赋值，当个周期即时修改(还有exe_pos)
   integer ei; // may be xxx
   integer wi; // may be xxx
   reg [SB_SIZE_WIDTH-1:0] issue_pos; 
@@ -97,28 +103,13 @@ module scoreboard
   reg ls_ready;
   reg [SB_SIZE_WIDTH-1:0] alu_vacant_pos;
 
-  assign reg_rs1 = rs1[exe_pos];
-  assign reg_rs2 = rs2[exe_pos];
-  assign alu_opt = opt[exe_pos];
-  assign alu_funct = funct[exe_pos];
-  assign alu_rd = rd[exe_pos];
-  assign alu_imm = imm[exe_pos];
-  assign alu_pos = exe_pos;
-  assign ls_opt = opt[exe_pos];
-  assign ls_funct = funct[exe_pos];
-  assign ls_rd = rd[exe_pos];
-  assign ls_imm = imm[exe_pos];
-  assign ls_pos = exe_pos;
-
   integer i, j;
   always @(posedge clk) begin
     if (rst) begin
-      ib_vacant_ALU <= 0;
-      ib_vacant_LS <= 0;
-      reg_valid <= 0;
-      reg_dest <= 0;
-      alu_valid <= 0;
-      ls_valid <= 0;
+      ib_vacant_ALU <= 1;
+      ib_vacant_LS <= 1;
+      exe_dest <= 0;
+      exe_valid <= 0;
       for (i = 0; i < REG_SIZE; i = i + 1) begin
         last_read_pos[i] <= INVALID_POS;
         last_write_pos[i] <= INVALID_POS;
@@ -141,7 +132,7 @@ module scoreboard
       end
       exe_pos <= INVALID_POS;
       alu_ready_pos <= ALU_ENTRY_SIZE;
-      alu_vacant_pos <= INVALID_POS;
+      alu_vacant_pos <= 0;
       ls_rear <= LS_ST_POS;
       ls_front <= LS_ST_POS;
     end else begin
@@ -157,7 +148,7 @@ module scoreboard
             ls_rear <= ls_rear + 1;
           end
         end else begin
-          // ! invalid instruction
+          // ~ invalid instruction
         end
 
         valid[issue_pos] <= 1;
@@ -188,33 +179,37 @@ module scoreboard
           dep_waw[issue_pos] <= last_write_pos[ib_rd];
           last_write_pos[ib_rd] <= issue_pos;
         end
+
+`ifdef DEBUG
+        $fdisplay(logfile, "\n--------------!!SB issue!! at #%X--------------\n", issue_pos);
+`endif
       end
 
       // handle exe
       if (alu_busy == 0 && alu_ready_pos != ALU_ENTRY_SIZE) begin
         exe_pos = alu_ready_pos;
-        exe[alu_ready_pos] <= 1;
         alu_busy <= 1;
-        reg_valid <= 1;
-        reg_dest <= 0;
-        alu_valid <= 1;
-        ls_valid <= 0;
+        exe_dest <= 0;
       end else if (ls_busy == 0 && ls_ready) begin
         exe_pos = ls_front;
-        exe[ls_front] <= 1;
         ls_busy <= 1;
-        reg_valid <= 1;
-        reg_dest <= 1;
-        alu_valid <= 0;
-        ls_valid <= 1;
+        exe_dest <= 1;
       end else begin
-        exe_pos = INVALID_POS; // ! 数组访问越界会不会出错？ // 如果要改，后面always(exe_pos)也要改
-        reg_valid <= 0;
-        alu_valid <= 0;
-        ls_valid <= 0;
+        exe_pos = INVALID_POS; // ! 数组访问越界会不会出错？ // 如果要改，后面if也要改
+        exe_valid <= 0;
       end
 
       if (exe_pos != INVALID_POS) begin
+        exe_valid <= 1;
+        exe[exe_pos] <= 1;
+
+        reg_rs1 <= rs1[exe_pos];
+        reg_rs2 <= rs2[exe_pos];
+        exe_opt <= opt[exe_pos];
+        exe_funct <= funct[exe_pos];
+        exe_rd <= rd[exe_pos];
+        exe_imm <= imm[exe_pos];
+
         for (ei = 0; ei < SB_SIZE; ei = ei + 1)
           if (valid[ei] && dep_war[ei] == exe_pos)
             dep_war[ei] <= INVALID_POS;
@@ -224,6 +219,10 @@ module scoreboard
 
         if (last_read_pos[rs2[exe_pos]] == exe_pos && (ib_valid == 0 || (ib_rs1 != rs2[exe_pos] && ib_rs2 != rs2[exe_pos])))
           last_read_pos[rs2[exe_pos]] <= INVALID_POS;
+
+`ifdef DEBUG
+        $fdisplay(logfile, "\n--------------!!SB exe!! at #%X--------------\n", exe_pos);
+`endif
       end
 
       // handle write back
@@ -253,11 +252,14 @@ module scoreboard
             dep_waw[wi] <= INVALID_POS;
         end
 
+`ifdef DEBUG
+        $fdisplay(logfile, "\n--------------!!SB wb!! at #%X--------------\n", wb_pos);
+`endif
       end
     end
   end
 
-  // maintain vacant（当个周期即时修改，阻塞赋值）
+  // * maintain vacant（当个周期即时修改，阻塞赋值）
   integer vi; // may be xxx
   reg v_flag; // may be xxx
   always @* begin
@@ -282,7 +284,7 @@ module scoreboard
     end
   end
 
-  // maintain ready（当个周期即时修改，阻塞赋值）
+  // * maintain ready（当个周期即时修改，阻塞赋值）
   integer ri; // may be xxx
   reg r_flag; // may be xxx
   always @* begin
@@ -305,5 +307,42 @@ module scoreboard
       alu_ready_pos = ALU_ENTRY_SIZE;
     end
   end
+
+`ifdef DEBUG
+integer di;
+  always @(posedge clk) begin
+    if (rst == 0) begin
+      $fdisplay(logfile, "SB alu_busy = %X, ls_busy = %X", alu_busy, ls_busy);
+      $fdisplay(logfile, "SB ls_front = %X, ls_rear = %X", ls_front, ls_rear);
+
+      // $fdisplay(logfile, "SB vacant_LS = %X, vacant_ALU_pos = %X", ib_vacant_LS, alu_vacant_pos);
+
+      $fdisplay(logfile, "----------------SB entry----------------");
+      $fdisplay(logfile, " pos|valid|exe|rs1|dep1|rs2|dep2| rd |war|waw");
+      for (di = 0; di < SB_SIZE; di = di + 1) begin
+        if (valid[di]) begin
+          $fdisplay(logfile, "#%3d|  %b  | %b |%3d| %2d |%3d| %2d | %2d |%3d|%3d", di, valid[di], exe[di], rs1[di], dep1[di], rs2[di], dep2[di], rd[di], dep_war[di], dep_waw[di]);
+        end
+      end
+      $fdisplay(logfile, "-----------------------------------------");
+
+      $fdisplay(logfile, "----------------REGFILE----------------");
+      for (di = 0; di < REG_SIZE; di = di + 1) begin
+        if (last_read_pos[di] != INVALID_POS || last_write_pos[di] != INVALID_POS) begin
+          $fdisplay(logfile, "r%3d: last_read #%2d, last_write #%2d", di, last_read_pos[di], last_write_pos[di]);
+        end
+      end
+      $fdisplay(logfile, "-----------------------------------------");
+    end
+  end
+`endif  
+
+`ifdef DEBUG
+  integer logfile;
+  initial begin
+    logfile = $fopen("sb.log", "w");
+    $fdisplay(logfile, "SB LS_ST_POS = %X, LS_ED_POS = %X, INVALID_POS = %X", LS_ST_POS, LS_ED_POS, INVALID_POS);
+  end
+`endif
 
 endmodule

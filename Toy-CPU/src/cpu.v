@@ -1,7 +1,9 @@
-// `include "./src/idecode.v"
-// `include "./src/ifetch.v"
-// `include "./src/mem_ctrl.v"
-// `include "./src/ibuffer.v"
+`include "./src/idecode.v"
+`include "./src/ifetch.v"
+`include "./src/mem_ctrl.v"
+`include "./src/ibuffer.v"
+`include "./src/scoreboard.v"
+`include "./src/register.v"
 
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
@@ -30,7 +32,8 @@ module cpu
 
 localparam OPT_SIZE = 7;
 localparam FUNCT_SIZE = 3;
-localparam REG_SIZE = 5;
+localparam REG_WIDTH = 5;
+localparam SB_SIZE_WIDTH = 4;
 
 // Specifications:
 // - Pause cpu(freeze pc, registers, etc.) when rdy_in is low
@@ -58,29 +61,43 @@ wire                      ib_to_id_vacant;
 wire                      id_to_ib_valid;
 wire [OPT_SIZE-1:0]       id_to_ib_opt;
 wire [FUNCT_SIZE-1:0]     id_to_ib_funct;
-wire [REG_SIZE-1:0]       id_to_ib_rs1;
-wire [REG_SIZE-1:0]       id_to_ib_rs2;
-wire [REG_SIZE-1:0]       id_to_ib_rd;
+wire [REG_WIDTH-1:0]       id_to_ib_rs1;
+wire [REG_WIDTH-1:0]       id_to_ib_rs2;
+wire [REG_WIDTH-1:0]       id_to_ib_rd;
 wire [MEM_DATA_WIDTH-1:0] id_to_ib_imm;
 
 // ib and sb
 wire                      ib_to_sb_valid;
 wire [OPT_SIZE-1:0]       ib_to_sb_opt;
 wire [FUNCT_SIZE-1:0]     ib_to_sb_funct;
-wire [REG_SIZE-1:0]       ib_to_sb_rs1;
-wire [REG_SIZE-1:0]       ib_to_sb_rs2;
-wire [REG_SIZE-1:0]       ib_to_sb_rd;
+wire [REG_WIDTH-1:0]      ib_to_sb_rs1;
+wire [REG_WIDTH-1:0]      ib_to_sb_rs2;
+wire [REG_WIDTH-1:0]      ib_to_sb_rd;
 wire [MEM_DATA_WIDTH-1:0] ib_to_sb_imm;
 wire                      sb_to_ib_vacant_ALU;
 wire                      sb_to_ib_vacant_LS;
 
-// todo
-assign sb_to_ib_vacant_ALU = 1;
-assign sb_to_ib_vacant_LS = 1;
+// sb and reg
+wire [REG_WIDTH-1:0]      sb_to_reg_rs1;
+wire [REG_WIDTH-1:0]      sb_to_reg_rs2;
 
-// if and wb
-wire                      wb_to_if_valid;
-wire [MEM_ADDR_WIDTH-1:0] wb_to_if_offset;
+// exe broadcast
+wire                      exe_valid;
+wire                      exe_dest; // 0 for alu, 1 for ls
+wire [SB_SIZE_WIDTH-1:0]  exe_pos;
+wire [OPT_SIZE-1:0]       exe_opt;
+wire [FUNCT_SIZE-1:0]     exe_funct;
+wire [REG_WIDTH-1:0]      exe_rd;
+wire [MEM_DATA_WIDTH-1:0] exe_imm;
+wire [MEM_DATA_WIDTH-1:0] exe_rs1;
+wire [MEM_DATA_WIDTH-1:0] exe_rs2;
+
+// wb broadcast
+wire                      wb_valid;
+wire [SB_SIZE_WIDTH-1:0]  wb_pos;
+wire [REG_WIDTH-1:0]      wb_rd;
+wire [MEM_DATA_WIDTH-1:0] wb_value;
+wire [MEM_ADDR_WIDTH-1:0] wb_offset;
 
 // mc and ls
 wire                      ls_to_mc_we;
@@ -93,8 +110,8 @@ i_fetch #(.ADDR_WIDTH(32),
          .INST_WIDTH(32)) u_i_fetch(
   .clk          	(clk_in),
   .rst          	(rst_in),
-  .offset_valid 	(wb_to_if_valid),
-  .offset       	(wb_to_if_offset),
+  .offset_valid 	(wb_valid),
+  .offset       	(wb_offset),
   .id_vacant  	(id_to_if_vacant),
   .id_valid   	(if_to_id_valid),
   .id_inst      (if_to_id_inst),
@@ -145,6 +162,57 @@ i_buffer #(.IB_SIZE_WIDTH(3),
   .sb_rs2       	(ib_to_sb_rs2),
   .sb_rd        	(ib_to_sb_rd),
   .sb_imm       	(ib_to_sb_imm)
+);
+
+scoreboard #(.ALU_ENTRY_SIZE(8),
+             .LS_ENTRY_SIZE(7),
+             .SB_SIZE_WIDTH(4),
+             .DATA_WIDTH(32)) u_scoreboard (
+  .clk        (clk_in),
+  .rst        (rst_in),
+
+  .ib_vacant_ALU (sb_to_ib_vacant_ALU),
+  .ib_vacant_LS  (sb_to_ib_vacant_LS),
+  .ib_valid   (ib_to_sb_valid),
+  .ib_opt     (ib_to_sb_opt),
+  .ib_funct   (ib_to_sb_funct),
+  .ib_rs1     (ib_to_sb_rs1),
+  .ib_rs2     (ib_to_sb_rs2),
+  .ib_rd      (ib_to_sb_rd),
+  .ib_imm     (ib_to_sb_imm),
+
+  .reg_rs1    (sb_to_reg_rs1),
+  .reg_rs2    (sb_to_reg_rs2),
+
+  .exe_valid  (exe_valid),
+  .exe_dest   (exe_dest),
+  .exe_pos    (exe_pos),
+  .exe_opt    (exe_opt),
+  .exe_funct  (exe_funct),
+  .exe_rd     (exe_rd),
+  .exe_imm    (exe_imm),
+
+  .wb_valid   (wb_valid),
+  .wb_pos     (wb_pos),
+  .wb_rd      (wb_rd)
+);
+
+register #(.REG_WIDTH(5),
+           .DATA_WIDTH(32)) u_register (
+  .clk        (clk_in),
+  .rst        (rst_in),
+
+  .sb_valid   (exe_valid),
+  .sb_dest    (exe_dest),
+  .sb_rs1     (sb_to_reg_rs1),
+  .sb_rs2     (sb_to_reg_rs2),
+
+  .wb_valid   (wb_valid),
+  .wb_rd      (wb_rd),
+  .wb_value   (wb_value),
+
+  .exe_rs1    (exe_rs1),
+  .exe_rs2    (exe_rs2)
 );
 
 mem_ctrl #(.ADDR_WIDTH(32),
