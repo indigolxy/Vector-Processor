@@ -8,6 +8,7 @@ module alu
   input wire clk,
   input wire rst,
 
+  // from exe broadcast
   input wire valid,
   input wire dest, // 0 for alu, 1 for ls
   input wire [SB_SIZE_WIDTH-1:0] pos,
@@ -110,7 +111,7 @@ module alu
       3'b011: arith_res = (arith_op1 < arith_op2);
     endcase
   end
-  
+
 endmodule
 
   // reg [5:0] operation;

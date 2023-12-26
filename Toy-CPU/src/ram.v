@@ -25,9 +25,9 @@ reg [ADDR_WIDTH-1:0] q_addr_b;
 always @(posedge clk)
   begin
     q_addr_a <= addr_a;
-    // if (we)
-    //     ram[addr_b] <= din_b;
-    // q_addr_b <= addr_b;
+    q_addr_b <= addr_b;
+    if (we_b)
+      ram[addr_b] <= din_b;
   end
 
 integer i;

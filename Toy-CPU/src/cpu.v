@@ -1,9 +1,10 @@
-`include "./src/idecode.v"
-`include "./src/ifetch.v"
-`include "./src/mem_ctrl.v"
-`include "./src/ibuffer.v"
-`include "./src/scoreboard.v"
-`include "./src/register.v"
+// `include "./src/idecode.v"
+// `include "./src/ifetch.v"
+// `include "./src/mem_ctrl.v"
+// `include "./src/ibuffer.v"
+// `include "./src/scoreboard.v"
+// `include "./src/register.v"
+// `include "./src/alu.v"
 
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
@@ -98,6 +99,12 @@ wire [SB_SIZE_WIDTH-1:0]  wb_pos;
 wire [REG_WIDTH-1:0]      wb_rd;
 wire [MEM_DATA_WIDTH-1:0] wb_value;
 wire [MEM_ADDR_WIDTH-1:0] wb_offset;
+
+// alu and wb
+wire                      alu_to_wb_valid;
+wire [SB_SIZE_WIDTH-1:0]  alu_to_wb_pos;
+wire [REG_WIDTH-1:0]      alu_to_wb_rd;
+wire [MEM_DATA_WIDTH-1:0] alu_to_wb_value;
 
 // mc and ls
 wire                      ls_to_mc_we;
@@ -215,6 +222,27 @@ register #(.REG_WIDTH(5),
   .exe_rs2    (exe_rs2)
 );
 
+alu #(.SB_SIZE_WIDTH(4),
+      .DATA_WIDTH(32)) u_alu (
+  .clk        (clk_in),
+  .rst        (rst_in),
+
+  .valid      (exe_valid),
+  .dest       (exe_dest),
+  .pos        (exe_pos),
+  .opt        (exe_opt),
+  .funct      (exe_funct),
+  .rd         (exe_rd),
+  .imm        (exe_imm),
+  .rs1        (exe_rs1),
+  .rs2        (exe_rs2),
+
+  .wb_valid   (alu_to_wb_valid),
+  .wb_pos     (alu_to_wb_pos),
+  .wb_rd      (alu_to_wb_rd),
+  .wb_value   (alu_to_wb_value)
+);
+
 mem_ctrl #(.ADDR_WIDTH(32),
            .DATA_WIDTH(32)) u_mem_ctrl(
   .clk      	(clk_in),
@@ -231,7 +259,7 @@ mem_ctrl #(.ADDR_WIDTH(32),
   .addr_a   	(mem_addr_a),
   .data_a   	(mem_data_a),
   .addr_b   	(mem_addr_b),
-  .wr_b     	(mem_wr_b),
+  .we_b     	(mem_wr_b),
   .src_b    	(mem_src_b),
   .data_b   	(mem_data_b)
 );

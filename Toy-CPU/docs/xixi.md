@@ -4,13 +4,6 @@ riscv_top (ram + cpu)
 ## ram:2-ports
 addr_a,dout_a
 addr_b,din_b,dout_b
-## memctrl:in CPU
-for now: one cycle per instruction, state machine(2state)
-
-handle with if:
-1. valid: 
-2. done: count cycles itself, when done, set done bit (always transfer data).
-handle with ls:
 
 # cpu
 ## i_fetch
@@ -113,6 +106,17 @@ INVALID_POS:11111...，在dependency和regfile中表示无效(SB_SIZE=2^SB_SIZE_
 ## alu
 状态转移：IDLE---valid&dest, get op...---->EXE----nxt cycle, get rs, calculate---->IDLE
 
+## memctrl
+a,b 状态转移
+for now: 一周期4 byte，不需要计数
+收到valid后下一个周期就会done（且下一个周期的valid会被忽略）
+
+## ls_unit
+只实现了lw sw
+IDLE->EXE：收到sb的广播后直接设置pos,rd，保存op,imm
+EXE->WAIT：在收到sb的下个周期立即收到reg的广播，设置mc的数据，等待mc相应
+WAIT->IDLE：mc_done以后，设置wb的valid和data，完成写回
+
 # TODO MARK BUG
 ## 2023.11.29
 1. add memctrl(what is the addr_width in cpu(instructions)? 32!)(出cpu带宽32进ram带宽16)
@@ -177,3 +181,7 @@ target: 波形图看起来正常，能一直读到指令（idecode相关wire先�
 1. mark： module output 可以改用 reg？
 2. mark: register 到 alu/ls 和 scoreboard 到 alu/ls 都选择了广播，如果后续要改也可以
 2. mark：scoreboard：always @posedge 块里用了阻塞赋值
+
+## 2023.12.24
+1. 重写 mc，写 ls
+2. 写 wb

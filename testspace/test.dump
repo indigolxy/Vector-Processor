@@ -1,0 +1,65 @@
+
+/mnt/d/aaastudy/arch1/Vector-Processor/testspace/test.om：     文件格式 elf32-littleriscv
+
+
+Disassembly of section .rom:
+
+00000000 <.rom>:
+   0:	00020137          	lui	sp,0x20
+   4:	7fd000ef          	jal	1000 <main>
+   8:	0ff00513          	li	a0,255
+   c:	000306b7          	lui	a3,0x30
+  10:	00a68223          	sb	a0,4(a3) # 30004 <__heap_start+0x2e004>
+  14:	ff9ff06f          	j	c <main-0xff4>
+
+Disassembly of section .text:
+
+00001000 <main>:
+    1000:	fe010113          	add	sp,sp,-32 # 1ffe0 <__heap_start+0x1dfe0>
+    1004:	00812e23          	sw	s0,28(sp)
+    1008:	02010413          	add	s0,sp,32
+    100c:	00100793          	li	a5,1
+    1010:	fef42623          	sw	a5,-20(s0)
+    1014:	00200793          	li	a5,2
+    1018:	fef42423          	sw	a5,-24(s0)
+    101c:	fec42703          	lw	a4,-20(s0)
+    1020:	fe842783          	lw	a5,-24(s0)
+    1024:	00f707b3          	add	a5,a4,a5
+    1028:	fef42223          	sw	a5,-28(s0)
+    102c:	00000793          	li	a5,0
+    1030:	00078513          	mv	a0,a5
+    1034:	01c12403          	lw	s0,28(sp)
+    1038:	02010113          	add	sp,sp,32
+    103c:	00008067          	ret
+
+Disassembly of section .riscv.attributes:
+
+00000000 <.riscv.attributes>:
+   0:	1b41                	.insn	2, 0x1b41
+   2:	0000                	.insn	2, 0x
+   4:	7200                	.insn	2, 0x7200
+   6:	7369                	.insn	2, 0x7369
+   8:	01007663          	bgeu	zero,a6,14 <main-0xfec>
+   c:	0011                	.insn	2, 0x0011
+   e:	0000                	.insn	2, 0x
+  10:	1004                	.insn	2, 0x1004
+  12:	7205                	.insn	2, 0x7205
+  14:	3376                	.insn	2, 0x3376
+  16:	6932                	.insn	2, 0x6932
+  18:	7032                	.insn	2, 0x7032
+  1a:	0031                	.insn	2, 0x0031
+
+Disassembly of section .comment:
+
+00000000 <.comment>:
+   0:	3a434347          	.insn	4, 0x3a434347
+   4:	2820                	.insn	2, 0x2820
+   6:	39386367          	.insn	4, 0x39386367
+   a:	6431                	.insn	2, 0x6431
+   c:	6438                	.insn	2, 0x6438
+   e:	65333263          	.insn	4, 0x65333263
+  12:	2029                	.insn	2, 0x2029
+  14:	3331                	.insn	2, 0x3331
+  16:	322e                	.insn	2, 0x322e
+  18:	302e                	.insn	2, 0x302e
+	...
