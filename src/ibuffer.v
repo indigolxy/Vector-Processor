@@ -10,7 +10,8 @@ module i_buffer
   output reg id_vacant,
   input wire id_valid,
   input wire [`OPT_WID] id_opt,
-  input wire [`FUNCT3_WID] id_funct,
+  input wire [`FUNCT3_WID] id_funct3,
+  input wire [`FUNCT6_WID] id_funct6,
   input wire [`REG_WID] id_rs1,
   input wire [`REG_WID] id_rs2,
   input wire [`REG_WID] id_rd,
@@ -21,21 +22,17 @@ module i_buffer
   input wire sb_vacant_LS,
   output reg sb_valid,
   output wire [`OPT_WID] sb_opt,
-  output wire [`FUNCT3_WID] sb_funct,
+  output wire [`FUNCT3_WID] sb_funct3,
+  output wire [`FUNCT6_WID] sb_funct6,
   output wire [`REG_WID] sb_rs1,
   output wire [`REG_WID] sb_rs2,
   output wire [`REG_WID] sb_rd,
   output wire [`XLEN-1:0] sb_imm
 );
 
-localparam OPCODE_B = 7'b1100011;
-localparam OPCODE_L = 7'b0000011;
-localparam OPCODE_S = 7'b0100011;
-localparam OPCODE_I = 7'b0010011;
-localparam OPCODE_R = 7'b0110011;
-
 reg [`OPT_WID] opt [`IB_SIZE-1:0];
-reg [`FUNCT3_WID] funct [`IB_SIZE-1:0];
+reg [`FUNCT3_WID] funct3 [`IB_SIZE-1:0];
+reg [`FUNCT6_WID] funct6 [`IB_SIZE-1:0];
 reg [`REG_WID] rs1 [`IB_SIZE-1:0];
 reg [`REG_WID] rs2 [`IB_SIZE-1:0];
 reg [`REG_WID] rd [`IB_SIZE-1:0];
@@ -44,7 +41,8 @@ reg [`XLEN-1:0] imm [`IB_SIZE-1:0];
 reg [`IB_WID] front, rear;
 
 assign sb_opt = opt[front];
-assign sb_funct = funct[front];
+assign sb_funct3 = funct3[front];
+assign sb_funct6 = funct6[front];
 assign sb_rs1 = rs1[front];
 assign sb_rs2 = rs2[front];
 assign sb_rd = rd[front];
@@ -66,7 +64,8 @@ always @(posedge clk) begin
     sb_valid <= 0;
     for (i = 0; i < `IB_SIZE; i = i + 1) begin
         opt[i] <= 0;
-        funct[i] <= 0;
+        funct3[i] <= 0;
+        funct6[i] <= 0;
         rs1[i] <= 0;
         rs2[i] <= 0;
         rd[i] <= 0;
@@ -80,7 +79,8 @@ always @(posedge clk) begin
       if (id_valid) begin
         // receive the inst from id
         opt[rear] <= id_opt;
-        funct[rear] <= id_funct;
+        funct3[rear] <= id_funct3;
+        funct6[rear] <= id_funct6;
         rs1[rear] <= id_rs1;
         rs2[rear] <= id_rs2;
         rd[rear] <= id_rd;
@@ -122,10 +122,10 @@ always @(posedge clk) begin
       end
     end
     WAIT_SEND: begin
-      if (sb_vacant_ALU && (opt[front] == OPCODE_B || opt[front] == OPCODE_I || opt[front] == OPCODE_R)) begin
+      if (sb_vacant_ALU && (opt[front] == `OPCODE_B || opt[front] == `OPCODE_I || opt[front] == `OPCODE_R || opt[front] == `OPCODE_VA)) begin
         sb_valid <= 1;
         send_status <= SENT;
-      end else if (sb_vacant_LS && (opt[front] == OPCODE_L || opt[front] == OPCODE_S)) begin
+      end else if (sb_vacant_LS && (opt[front] == `OPCODE_L || opt[front] == `OPCODE_S || opt[front] == `OPCODE_VL || opt[front] == `OPCODE_VS)) begin
         sb_valid <= 1;
         send_status <= SENT;
       end
@@ -149,5 +149,24 @@ always @(posedge clk) begin
     endcase
   end
 end
+
+`ifdef DEBUG
+  always @(posedge clk) begin
+    if (rst == 0) begin
+      $fdisplay(logfile, "IB front = %X, rear = %X", front, rear);
+      $fdisplay(logfile, "IB opt[front] = %X, `OPCODE_R = %X", opt[front], `OPCODE_R);
+      $fdisplay(logfile, "sb_vacant_ALU = %X, sb_vacant_LS = %X", sb_vacant_ALU, sb_vacant_LS);
+      $fdisplay(logfile, "send_status = %X, receive_status = %X", send_status, receive_status);
+      $fdisplay(logfile, "-------------------------");
+    end
+  end
+`endif 
+
+`ifdef DEBUG
+  integer logfile;
+  initial begin
+    logfile = $fopen("ib.log", "w");
+  end
+`endif
 
 endmodule

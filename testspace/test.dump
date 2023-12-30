@@ -1,65 +1,80 @@
 
-/mnt/d/aaastudy/arch1/Vector-Processor/testspace/test.om：     文件格式 elf32-littleriscv
+test.o：     文件格式 elf32-littleriscv
 
-
-Disassembly of section .rom:
-
-00000000 <.rom>:
-   0:	00020137          	lui	sp,0x20
-   4:	7fd000ef          	jal	1000 <main>
-   8:	0ff00513          	li	a0,255
-   c:	000306b7          	lui	a3,0x30
-  10:	00a68223          	sb	a0,4(a3) # 30004 <__heap_start+0x2e004>
-  14:	ff9ff06f          	j	c <main-0xff4>
 
 Disassembly of section .text:
 
-00001000 <main>:
-    1000:	fe010113          	add	sp,sp,-32 # 1ffe0 <__heap_start+0x1dfe0>
-    1004:	00812e23          	sw	s0,28(sp)
-    1008:	02010413          	add	s0,sp,32
-    100c:	00100793          	li	a5,1
-    1010:	fef42623          	sw	a5,-20(s0)
-    1014:	00200793          	li	a5,2
-    1018:	fef42423          	sw	a5,-24(s0)
-    101c:	fec42703          	lw	a4,-20(s0)
-    1020:	fe842783          	lw	a5,-24(s0)
-    1024:	00f707b3          	add	a5,a4,a5
-    1028:	fef42223          	sw	a5,-28(s0)
-    102c:	00000793          	li	a5,0
-    1030:	00078513          	mv	a0,a5
-    1034:	01c12403          	lw	s0,28(sp)
-    1038:	02010113          	add	sp,sp,32
-    103c:	00008067          	ret
+00000000 <vvaddint32>:
+   0:	0d0572d7          	vsetvli	t0,a0,e32,m1,ta,ma
+   4:	0205e007          	vle32.v	v0,(a1)
+   8:	40550533          	sub	a0,a0,t0
+   c:	00229293          	sll	t0,t0,0x2
+  10:	005585b3          	add	a1,a1,t0
+  14:	02066087          	vle32.v	v1,(a2)
+  18:	00560633          	add	a2,a2,t0
+  1c:	02008157          	vadd.vv	v2,v0,v1
+  20:	0206e127          	vse32.v	v2,(a3)
+  24:	005686b3          	add	a3,a3,t0
+  28:	fc051ce3          	bnez	a0,0 <vvaddint32>
+  2c:	00008067          	ret
 
 Disassembly of section .riscv.attributes:
 
 00000000 <.riscv.attributes>:
-   0:	1b41                	.insn	2, 0x1b41
-   2:	0000                	.insn	2, 0x
-   4:	7200                	.insn	2, 0x7200
+   0:	8241                	vmsgeu.vx	v4,v0,ra,v0.t
+   2:	0000                	vmsge.vx	v0,v0,zero,v0.t
+   4:	7200                	vmsge.vx	v4,v0,zero,v0.t
    6:	7369                	.insn	2, 0x7369
-   8:	01007663          	bgeu	zero,a6,14 <main-0xfec>
-   c:	0011                	.insn	2, 0x0011
-   e:	0000                	.insn	2, 0x
-  10:	1004                	.insn	2, 0x1004
-  12:	7205                	.insn	2, 0x7205
-  14:	3376                	.insn	2, 0x3376
-  16:	6932                	.insn	2, 0x6932
-  18:	7032                	.insn	2, 0x7032
-  1a:	0031                	.insn	2, 0x0031
-
-Disassembly of section .comment:
-
-00000000 <.comment>:
-   0:	3a434347          	.insn	4, 0x3a434347
-   4:	2820                	.insn	2, 0x2820
-   6:	39386367          	.insn	4, 0x39386367
-   a:	6431                	.insn	2, 0x6431
-   c:	6438                	.insn	2, 0x6438
-   e:	65333263          	.insn	4, 0x65333263
-  12:	2029                	.insn	2, 0x2029
-  14:	3331                	.insn	2, 0x3331
-  16:	322e                	.insn	2, 0x322e
-  18:	302e                	.insn	2, 0x302e
+   8:	01007663          	bgeu	zero,a6,14 <.riscv.attributes+0x14>
+   c:	0078                	.insn	2, 0x0078
+   e:	0000                	vmsge.vx	v0,v0,zero,v0.t
+  10:	7205                	.insn	2, 0x7205
+  12:	3376                	.insn	2, 0x3376
+  14:	6932                	.insn	2, 0x6932
+  16:	7032                	.insn	2, 0x7032
+  18:	5f31                	.insn	2, 0x5f31
+  1a:	3266                	.insn	2, 0x3266
+  1c:	3270                	.insn	2, 0x3270
+  1e:	645f 7032 5f32      	.insn	6, 0x5f327032645f
+  24:	3176                	.insn	2, 0x3176
+  26:	3070                	.insn	2, 0x3070
+  28:	7a5f 6369 7273      	.insn	6, 0x727363697a5f
+  2e:	7032                	.insn	2, 0x7032
+  30:	5f30                	.insn	2, 0x5f30
+  32:	767a                	.insn	2, 0x767a
+  34:	3365                	.insn	2, 0x3365
+  36:	6632                	.insn	2, 0x6632
+  38:	7031                	.insn	2, 0x7031
+  3a:	5f30                	.insn	2, 0x5f30
+  3c:	767a                	.insn	2, 0x767a
+  3e:	3365                	.insn	2, 0x3365
+  40:	7832                	.insn	2, 0x7832
+  42:	7031                	.insn	2, 0x7031
+  44:	5f30                	.insn	2, 0x5f30
+  46:	767a                	.insn	2, 0x767a
+  48:	3665                	.insn	2, 0x3665
+  4a:	6434                	.insn	2, 0x6434
+  4c:	7031                	.insn	2, 0x7031
+  4e:	5f30                	.insn	2, 0x5f30
+  50:	767a                	.insn	2, 0x767a
+  52:	3665                	.insn	2, 0x3665
+  54:	6634                	.insn	2, 0x6634
+  56:	7031                	.insn	2, 0x7031
+  58:	5f30                	.insn	2, 0x5f30
+  5a:	767a                	.insn	2, 0x767a
+  5c:	3665                	.insn	2, 0x3665
+  5e:	7834                	.insn	2, 0x7834
+  60:	7031                	.insn	2, 0x7031
+  62:	5f30                	.insn	2, 0x5f30
+  64:	767a                	.insn	2, 0x767a
+  66:	316c                	.insn	2, 0x316c
+  68:	3832                	.insn	2, 0x3832
+  6a:	3162                	vmsge.vx	v2,v0,zero,v0.t
+  6c:	3070                	.insn	2, 0x3070
+  6e:	7a5f 6c76 3233      	.insn	6, 0x32336c767a5f
+  74:	3162                	vmsge.vx	v2,v0,zero,v0.t
+  76:	3070                	.insn	2, 0x3070
+  78:	7a5f 6c76 3436      	.insn	6, 0x34366c767a5f
+  7e:	3162                	vmsge.vx	v2,v0,zero,v0.t
+  80:	3070                	.insn	2, 0x3070
 	...

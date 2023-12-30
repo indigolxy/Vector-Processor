@@ -17,7 +17,7 @@ _no_testcase_name_check:
 
 # All build result are put at testspace
 build_sim:
-	@cd $(src) && iverilog -o $(testspace)/test $(sim)/testbench.v $(src)/*.v
+	@cd $(src) && iverilog -D DEBUG -o $(testspace)/test $(sim)/testbench.v $(src)/*.v
 
 # @$(riscv_bin)/riscv32-unknown-elf-as -o $(sys)/rom.o -march=rv32i $(sys)/rom.s
 # @cp $(sim_testcase)/*$(name)*.c $(testspace)/test.c

@@ -15,7 +15,8 @@ module i_decode
   input wire ib_vacant,
   output wire ib_valid,
   output reg [`OPT_WID] ib_opt,
-  output reg [`FUNCT3_WID] ib_funct,
+  output reg [`FUNCT3_WID] ib_funct3,
+  output reg [`FUNCT6_WID] ib_funct6,
   output reg [`REG_WID] ib_rs1,
   output reg [`REG_WID] ib_rs2,
   output reg [`REG_WID] ib_rd,
@@ -28,14 +29,16 @@ assign ib_valid = if_valid;
 always @(*) begin
   if (rst) begin
     ib_opt <= 0;
-    ib_funct <= 0;
+    ib_funct3 <= 0;
+    ib_funct6 <= 0;
     ib_rs1 <= 0;
     ib_rs2 <= 0;
     ib_rd  <= 0;
     ib_imm <= 0;
   end else begin
     ib_opt <= inst[6:0];
-    ib_funct <= inst[14:12];
+    ib_funct3 <= inst[14:12];
+    ib_funct6 <= inst[31:26];
 
     case (inst[6:0])
       `OPCODE_B: begin
